@@ -1,0 +1,750 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BusGo - Pemesanan Tiket Bus</title>
+    
+    <!-- Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Google Fonts: Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Phosphor Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.9);
+        }
+        .modal-active { display: flex !important; }
+        
+        /* Custom scrollbar for better UI */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col">
+
+    <!-- Header -->
+    <header class="bg-blue-600 text-white shadow-md sticky top-0 z-40">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
+            <div class="flex items-center gap-2 cursor-pointer" onclick="navigate('search')">
+                <i class="ph ph-bus text-3xl"></i>
+                <h1 class="text-2xl font-bold tracking-tight">BusGo</h1>
+            </div>
+            <nav class="flex gap-6 font-medium">
+                <button onclick="navigate('search')" class="hover:text-blue-200 transition flex items-center gap-1">
+                    <i class="ph ph-magnifying-glass"></i> <span class="hidden sm:inline">Pesan Tiket</span>
+                </button>
+                <button onclick="navigate('passengerList')" class="hover:text-red-200 transition flex items-center gap-1">
+                    <i class="ph ph-users"></i> <span class="hidden sm:inline">Daftar Penumpang</span>
+                </button>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-grow max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full relative">
+        
+        <!-- Loading Overlay -->
+        <div id="globalLoader" class="absolute inset-0 bg-slate-50 z-30 flex flex-col justify-center items-center">
+            <i class="ph ph-spinner-gap animate-spin text-4xl text-blue-600 mb-2"></i>
+            <p class="text-slate-500 font-medium text-sm">Menghubungkan ke server...</p>
+        </div>
+
+        <!-- ============================== -->
+        <!-- VIEW 1: SEARCH FORM            -->
+        <!-- ============================== -->
+        <div id="searchView" class="hidden w-full max-w-4xl mx-auto transition-all duration-300 opacity-0 translate-y-4">
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 sm:p-8">
+                <h2 class="text-2xl font-bold mb-6 flex items-center gap-2 text-slate-800">
+                    <i class="ph ph-map-pin text-red-600"></i> Cari Jadwal Bus
+                </h2>
+                
+                <form id="searchForm" class="space-y-5">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+                        <!-- Asal -->
+                        <div>
+                            <label for="origin" class="block text-sm font-medium text-slate-700 mb-1">Kota Asal</label>
+                            <select id="origin" required class="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition appearance-none bg-slate-50">
+                                <option value="" disabled selected>Pilih Asal</option>
+                                <option value="Jakarta">Jakarta</option>
+                                <option value="Bandung">Bandung</option>
+                                <option value="Semarang">Semarang</option>
+                                <option value="Yogyakarta">Yogyakarta</option>
+                                <option value="Surabaya">Surabaya</option>
+                            </select>
+                        </div>
+
+                        <!-- Tujuan -->
+                        <div>
+                            <label for="destination" class="block text-sm font-medium text-slate-700 mb-1">Kota Tujuan</label>
+                            <select id="destination" required class="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition appearance-none bg-slate-50">
+                                <option value="" disabled selected>Pilih Tujuan</option>
+                                <option value="Jakarta">Jakarta</option>
+                                <option value="Bandung">Bandung</option>
+                                <option value="Semarang">Semarang</option>
+                                <option value="Yogyakarta">Yogyakarta</option>
+                                <option value="Surabaya">Surabaya</option>
+                            </select>
+                        </div>
+
+                        <!-- Tanggal Keberangkatan -->
+                        <div>
+                            <label for="date" class="block text-sm font-medium text-slate-700 mb-1">Tanggal Keberangkatan</label>
+                            <input type="date" id="date" required class="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition bg-slate-50">
+                        </div>
+                    </div>
+
+                    <!-- Custom Error Message Area -->
+                    <div id="searchError" class="hidden bg-red-50 text-red-600 p-4 rounded-lg text-sm flex items-center gap-2 border border-red-100">
+                        <i class="ph ph-warning-circle text-lg"></i> <span id="searchErrorText"></span>
+                    </div>
+
+                    <button type="submit" class="w-full md:w-auto md:px-12 ml-auto bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg transition duration-200 flex justify-center items-center gap-2 shadow-md hover:shadow-lg">
+                        Cari Bus <i class="ph ph-arrow-right font-bold"></i>
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- ============================== -->
+        <!-- VIEW 2: BUS LIST               -->
+        <!-- ============================== -->
+        <div id="busListView" class="hidden w-full max-w-4xl mx-auto space-y-4 transition-all duration-300 opacity-0 translate-y-4">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-3">
+                <div>
+                    <h2 class="text-2xl font-bold text-slate-800">Pilih Armada Bus</h2>
+                    <p id="searchSummaryText" class="text-sm text-slate-500 font-medium mt-1"></p>
+                </div>
+                <button onclick="navigate('search')" class="bg-slate-200 hover:bg-slate-300 text-slate-700 px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition">
+                    <i class="ph ph-arrow-left"></i> Ubah Rute
+                </button>
+            </div>
+            
+            <div id="busContainer" class="space-y-4">
+                <!-- Bus cards dynamically injected here -->
+            </div>
+        </div>
+
+        <!-- ============================== -->
+        <!-- VIEW 3: SEAT MAP               -->
+        <!-- ============================== -->
+        <div id="seatMapView" class="hidden w-full max-w-5xl mx-auto transition-all duration-300 opacity-0 translate-y-4">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-3">
+                <div>
+                    <h2 class="text-2xl font-bold text-slate-800 flex items-center gap-2">
+                        <i class="ph ph-armchair"></i> Pilih Kursi
+                    </h2>
+                    <p id="selectedBusInfo" class="text-sm text-slate-500 font-medium mt-1"></p>
+                </div>
+                <button onclick="navigate('busList')" class="bg-slate-200 hover:bg-slate-300 text-slate-700 px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition">
+                    <i class="ph ph-arrow-left"></i> Ganti Bus
+                </button>
+            </div>
+
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 flex flex-col md:flex-row gap-10 items-start">
+                
+                <!-- Seat Grid (Bus Layout) -->
+                <div class="w-full md:w-auto mx-auto md:mx-0 flex flex-col items-center">
+                    <div class="bg-slate-100 p-5 sm:p-8 rounded-[2rem] border-[8px] border-slate-300 shadow-inner w-[300px] sm:w-[360px]">
+                        <!-- Driver Area -->
+                        <div class="flex justify-between items-center mb-8 border-b-2 border-slate-300 pb-4">
+                            <div class="text-slate-400 text-xs font-bold tracking-widest bg-slate-200 px-2 py-1 rounded">PINTU</div>
+                            <div class="flex items-center gap-2 text-slate-500">
+                                <span class="text-xs font-bold">SUPIR</span>
+                                <i class="ph ph-steering-wheel text-4xl"></i>
+                            </div>
+                        </div>
+                        
+                        <!-- Dynamic Seats Container (10 rows, 2-2) -->
+                        <div id="seatsContainer" class="flex flex-col gap-3">
+                            <!-- Seats populated by JS -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Side: Legends & Summary -->
+                <div class="w-full md:flex-1 flex flex-col gap-6 sticky top-24">
+                    <!-- Legend -->
+                    <div class="bg-white p-5 rounded-xl border border-slate-200 flex justify-around shadow-sm">
+                        <div class="flex flex-col items-center gap-2">
+                            <div class="w-8 h-8 rounded-t-lg rounded-b-sm border-2 border-slate-300 bg-white"></div>
+                            <span class="text-xs font-medium text-slate-600">Tersedia</span>
+                        </div>
+                        <div class="flex flex-col items-center gap-2">
+                            <div class="w-8 h-8 rounded-t-lg rounded-b-sm border-2 border-blue-600 bg-blue-600 shadow-inner"></div>
+                            <span class="text-xs font-medium text-slate-600">Pilihanmu</span>
+                        </div>
+                        <div class="flex flex-col items-center gap-2">
+                            <div class="w-8 h-8 rounded-t-lg rounded-b-sm border-2 border-slate-300 bg-slate-300 relative overflow-hidden">
+                                <!-- Diagonal line to indicate taken -->
+                                <div class="absolute inset-0 bg-slate-400 opacity-20 transform -rotate-45"></div>
+                            </div>
+                            <span class="text-xs font-medium text-slate-600">Dipesan</span>
+                        </div>
+                    </div>
+
+                    <!-- Checkout Summary Card -->
+                    <div class="bg-gradient-to-br from-blue-50 to-slate-50 p-6 rounded-xl border border-blue-100 flex-grow flex flex-col shadow-sm">
+                        <h3 class="font-bold text-blue-900 text-lg mb-4 border-b border-blue-200 pb-2">Rincian Pemesanan</h3>
+                        
+                        <div class="space-y-3 flex-grow">
+                            <div class="flex justify-between items-center text-sm">
+                                <span class="text-slate-500">Nomor Kursi</span>
+                                <span id="lblSelectedSeats" class="font-bold text-slate-800 text-right">-</span>
+                            </div>
+                            <div class="flex justify-between items-center text-sm">
+                                <span class="text-slate-500">Harga per Tiket</span>
+                                <span id="lblSeatPrice" class="font-semibold text-slate-800">-</span>
+                            </div>
+                        </div>
+                        
+                        <div class="mt-6 pt-5 border-t-2 border-blue-200 border-dashed">
+                            <div class="flex justify-between items-end mb-6">
+                                <span class="text-slate-600 font-bold">Total Harga</span>
+                                <span id="lblTotalPrice" class="text-3xl font-extrabold text-blue-700">Rp 0</span>
+                            </div>
+                            
+                            <!-- Custom Warning for Max Seats -->
+                            <div id="seatWarning" class="hidden mb-4 text-center text-xs font-bold text-amber-600 bg-amber-50 p-2 rounded border border-amber-200">
+                                Anda maksimal hanya dapat memesan 4 kursi sekaligus.
+                            </div>
+
+                            <button id="btnOpenCheckout" disabled class="w-full bg-blue-600 disabled:bg-slate-300 disabled:text-slate-500 disabled:cursor-not-allowed hover:bg-blue-700 text-white font-bold py-4 rounded-xl transition-all shadow-md hover:shadow-lg flex justify-center items-center gap-2">
+                                Lanjutkan Pembayaran <i class="ph ph-arrow-circle-right text-xl"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ============================== -->
+        <!-- VIEW 4: PASSENGER LIST         -->
+        <!-- ============================== -->
+        <div id="passengerListView" class="hidden w-full max-w-5xl mx-auto transition-all duration-300 opacity-0 translate-y-4">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold text-slate-800 flex items-center gap-2">
+                    <i class="ph ph-users-three text-blue-600"></i> Daftar Penumpang
+                </h2>
+                <div class="bg-blue-50 text-blue-700 px-4 py-2 rounded-lg text-sm font-bold border border-blue-200">
+                    Data Real-time
+                </div>
+            </div>
+
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-100 text-slate-600 text-sm uppercase tracking-wider">
+                                <th class="p-4 font-bold border-b border-slate-200">Nama Penumpang</th>
+                                <th class="p-4 font-bold border-b border-slate-200">Rute Perjalanan</th>
+                                <th class="p-4 font-bold border-b border-slate-200">Bus & Tanggal</th>
+                                <th class="p-4 font-bold border-b border-slate-200 text-center">Kursi</th>
+                            </tr>
+                        </thead>
+                        <tbody id="passengerTableBody" class="divide-y divide-slate-100 text-sm text-slate-800">
+                            <!-- Rows injected via JS from Firestore data -->
+                        </tbody>
+                    </table>
+                </div>
+                
+                <!-- Empty State -->
+                <div id="emptyPassengerState" class="hidden flex flex-col items-center justify-center p-12 text-slate-500">
+                    <i class="ph ph-receipt text-6xl text-slate-300 mb-3"></i>
+                    <p class="text-lg font-medium">Belum ada pemesanan tiket.</p>
+                    <p class="text-sm">Jadilah penumpang pertama yang memesan!</p>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- ============================== -->
+    <!-- MODAL: CHECKOUT                -->
+    <!-- ============================== -->
+    <div id="checkoutModal" class="hidden fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-50 flex justify-center items-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden transform transition-all">
+            <!-- Modal Header -->
+            <div class="bg-blue-600 p-5 text-white flex justify-between items-center relative overflow-hidden">
+                <div class="absolute -right-4 -top-4 opacity-20">
+                    <i class="ph ph-ticket text-8xl"></i>
+                </div>
+                <h3 class="font-bold text-lg flex items-center gap-2 relative z-10">
+                    <i class="ph ph-identification-card text-xl"></i> Data Penumpang
+                </h3>
+                <button onclick="closeModal('checkoutModal')" class="text-white hover:text-blue-200 transition relative z-10">
+                    <i class="ph ph-x text-2xl font-bold"></i>
+                </button>
+            </div>
+            
+            <!-- Modal Body -->
+            <div class="p-6">
+                <form id="finalCheckoutForm">
+                    <!-- As requested: ONLY asks for Nama Lengkap Pemesan -->
+                    <div class="mb-6">
+                        <label for="passengerName" class="block text-sm font-bold text-slate-700 mb-2">Nama Lengkap Pemesan</label>
+                        <input type="text" id="passengerName" required autocomplete="off" class="w-full px-4 py-3 border-2 border-slate-200 rounded-xl focus:ring-0 focus:border-blue-500 outline-none transition bg-slate-50 text-lg font-medium" placeholder="Sesuai KTP/Identitas">
+                    </div>
+                    
+                    <!-- Booking Review -->
+                    <div class="bg-slate-50 p-5 rounded-xl mb-8 border border-slate-200 text-sm space-y-2">
+                        <div class="flex justify-between items-start">
+                            <span class="text-slate-500">Rute</span> 
+                            <strong id="finalRoute" class="text-right"></strong>
+                        </div>
+                        <div class="flex justify-between items-start">
+                            <span class="text-slate-500">Tanggal</span> 
+                            <strong id="finalDate" class="text-right"></strong>
+                        </div>
+                        <div class="flex justify-between items-start">
+                            <span class="text-slate-500">Kursi</span> 
+                            <strong id="finalSeats" class="text-right"></strong>
+                        </div>
+                        <div class="flex justify-between items-center mt-3 pt-3 border-t border-slate-200">
+                            <span class="text-slate-700 font-bold">Total Pembayaran</span> 
+                            <strong id="finalTotal" class="text-blue-600 text-xl font-extrabold"></strong>
+                        </div>
+                    </div>
+
+                    <!-- Submit Action -->
+                    <button type="submit" id="btnConfirmPayment" class="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-4 rounded-xl transition-all shadow-md hover:shadow-lg flex items-center justify-center gap-2 text-lg">
+                        Konfirmasi Pembayaran
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Success Modal -->
+    <div id="successModal" class="hidden fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-[60] flex justify-center items-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden p-8 text-center">
+            <div class="w-20 h-20 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-5">
+                <i class="ph ph-check-circle text-5xl text-emerald-500"></i>
+            </div>
+            <h3 class="text-2xl font-bold text-slate-800 mb-2">Pemesanan Berhasil!</h3>
+            <p class="text-slate-500 mb-8 text-sm">Tiket Anda telah dikonfirmasi dan kursi berhasil disimpan ke dalam sistem.</p>
+            <button onclick="finishBooking()" class="w-full bg-blue-600 text-white py-3 rounded-xl font-bold hover:bg-blue-700 transition">
+                Tutup & Lihat Daftar Penumpang
+            </button>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script>
+        //        // State Variables
+        const state = {
+            view: 'search',          // 'search', 'busList', 'seatMap', 'passengerList'
+            search: { origin: '', dest: '', date: '' },
+            selectedBus: null,       
+            selectedSeats: [],       
+            globalBookings: [],      
+            maxSeats: 4
+        };
+
+        // LocalStorage Management
+        function loadBookings() {
+            try {
+                const data = localStorage.getItem('busGo_bookings');
+                if (data) {
+                    state.globalBookings = JSON.parse(data);
+                    // Sort descending by timestamp
+                    state.globalBookings.sort((a, b) => b.timestamp - a.timestamp);
+                }
+            } catch (e) {
+                console.error("Error loading data", e);
+            }
+        }
+
+        function saveBooking(bookingData) {
+            state.globalBookings.unshift(bookingData); // Add to beginning (newest first)
+            localStorage.setItem('busGo_bookings', JSON.stringify(state.globalBookings));
+        }
+
+        //        // DOM Elements Collection
+        const UI = {
+            loader: document.getElementById('globalLoader'),
+            views: {
+                search: document.getElementById('searchView'),
+                busList: document.getElementById('busListView'),
+                seatMap: document.getElementById('seatMapView'),
+                passengerList: document.getElementById('passengerListView')
+            },
+            modals: {
+                checkout: document.getElementById('checkoutModal'),
+                success: document.getElementById('successModal')
+            }
+        };
+
+        // UI Navigation Function
+        window.navigate = function(targetView) {
+            if (targetView === 'busList' && (!state.search.origin || !state.search.dest)) {
+                targetView = 'search';
+            }
+            if (targetView === 'seatMap' && !state.selectedBus) {
+                targetView = 'busList';
+            }
+            showView(targetView);
+        };
+
+        function showView(viewId) {
+            state.view = viewId;
+            
+            Object.values(UI.views).forEach(v => {
+                v.classList.add('hidden');
+                v.classList.remove('opacity-100', 'translate-y-0');
+                v.classList.add('opacity-0', 'translate-y-4');
+            });
+            
+            const viewEl = UI.views[viewId];
+            viewEl.classList.remove('hidden');
+            
+            setTimeout(() => {
+                viewEl.classList.remove('opacity-0', 'translate-y-4');
+                viewEl.classList.add('opacity-100', 'translate-y-0');
+            }, 10);
+
+            if (viewId === 'passengerList') renderPassengerList();
+            if (viewId === 'seatMap') renderSeatMap();
+        }
+
+        window.closeModal = function(modalId) {
+            UI.modals[modalId].classList.remove('modal-active');
+        };
+
+        const formatRupiah = (num) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(num);
+        
+        const formatDate = (dateStr) => {
+            if (!dateStr) return '';
+            const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+            return new Date(dateStr).toLocaleDateString('id-ID', options);
+        };
+
+        //        // --- STEP 1: SEARCH LOGIC ---
+        const searchForm = document.getElementById('searchForm');
+        const originInput = document.getElementById('origin');
+        const destInput = document.getElementById('destination');
+        const dateInput = document.getElementById('date');
+
+        dateInput.setAttribute('min', new Date().toISOString().split('T')[0]);
+
+        searchForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            
+            if (originInput.value === destInput.value) {
+                document.getElementById('searchErrorText').textContent = "Kota asal dan tujuan tidak boleh sama.";
+                document.getElementById('searchError').classList.remove('hidden');
+                return;
+            }
+            document.getElementById('searchError').classList.add('hidden');
+            
+            state.search = {
+                origin: originInput.value,
+                dest: destInput.value,
+                date: dateInput.value
+            };
+            
+            document.getElementById('searchSummaryText').textContent = 
+                `${state.search.origin} ke ${state.search.dest} • ${formatDate(state.search.date)}`;
+            
+            generateMockBusList();
+            navigate('busList');
+        });
+
+        // --- STEP 2: BUS LIST LOGIC ---
+        function generateMockBusList() {
+            const container = document.getElementById('busContainer');
+            container.innerHTML = '';
+            
+            const basePrice = Math.abs(state.search.origin.length - state.search.dest.length) * 15000 + 175000;
+            
+            const buses = [
+                { id: 'BUS-EXE', name: 'BusGo Executive', time: '08:00 - 14:00', price: basePrice, type: 'Executive 2-2' },
+                { id: 'BUS-VIP', name: 'BusGo VIP Safari', time: '13:00 - 19:30', price: basePrice + 45000, type: 'VIP 2-2' },
+                { id: 'BUS-NIGHT', name: 'BusGo Night Cruiser', time: '20:00 - 04:00', price: basePrice - 15000, type: 'Malam 2-2' }
+            ];
+
+            buses.forEach(bus => {
+                const card = document.createElement('div');
+                card.className = 'bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex flex-col md:flex-row justify-between items-center gap-5 hover:border-blue-400 hover:shadow-md transition cursor-default';
+                card.innerHTML = `
+                    <div class="flex items-center gap-5 w-full md:w-auto">
+                        <div class="bg-blue-50 p-4 rounded-xl text-blue-600"><i class="ph ph-bus text-4xl"></i></div>
+                        <div>
+                            <h4 class="font-bold text-xl text-slate-800 mb-1">${bus.name}</h4>
+                            <div class="text-sm text-slate-500 flex flex-wrap gap-4">
+                                <span class="flex items-center gap-1"><i class="ph ph-clock text-lg"></i> ${bus.time}</span>
+                                <span class="flex items-center gap-1"><i class="ph ph-armchair text-lg"></i> ${bus.type}</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex flex-col items-start md:items-end w-full md:w-auto border-t md:border-t-0 border-slate-100 pt-4 md:pt-0 mt-2 md:mt-0">
+                        <div class="font-extrabold text-2xl text-blue-700 mb-3">${formatRupiah(bus.price)}</div>
+                        <button class="w-full md:w-auto bg-blue-100 text-blue-700 hover:bg-blue-600 hover:text-white font-bold py-2 px-8 rounded-lg transition" 
+                                onclick="selectBus('${bus.id}', '${bus.name}', ${bus.price}, '${bus.time}')">
+                            Pilih Kursi
+                        </button>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        window.selectBus = function(id, name, price, time) {
+            state.selectedBus = { id, name, price, time };
+            state.selectedSeats = []; 
+            
+            document.getElementById('selectedBusInfo').innerHTML = 
+                `<strong>${name}</strong> • ${state.search.origin} - ${state.search.dest} • ${formatDate(state.search.date)}`;
+            
+            document.getElementById('lblSeatPrice').textContent = formatRupiah(price);
+            updateSeatSummary();
+            
+            navigate('seatMap');
+        };
+
+        //        // --- STEP 3: SEAT MAP LOGIC ---
+        function getCurrentRouteKey() {
+            return `${state.search.origin}-${state.search.dest}-${state.search.date}-${state.selectedBus.id}`;
+        }
+
+        function getBookedSeatsFromDB() {
+            const currentRouteKey = getCurrentRouteKey();
+            const bookedSeats = new Set();
+            
+            state.globalBookings.forEach(booking => {
+                if (booking.routeKey === currentRouteKey && Array.isArray(booking.seats)) {
+                    booking.seats.forEach(seat => bookedSeats.add(seat));
+                }
+            });
+            
+            return bookedSeats;
+        }
+
+        window.renderSeatMap = function() {
+            if (!state.selectedBus) return;
+
+            const container = document.getElementById('seatsContainer');
+            container.innerHTML = '';
+            
+            const bookedSeats = getBookedSeatsFromDB();
+            
+            const rows = 10;
+            const layout = ['A', 'B', 'aisle', 'C', 'D'];
+            
+            for (let r = 1; r <= rows; r++) {
+                const rowDiv = document.createElement('div');
+                rowDiv.className = 'flex justify-between items-center gap-1 sm:gap-2 w-full';
+                
+                layout.forEach(pos => {
+                    if (pos === 'aisle') {
+                        const aisle = document.createElement('div');
+                        aisle.className = 'w-8 sm:w-10 flex justify-center text-slate-300 text-xs font-bold items-center';
+                        aisle.textContent = r;
+                        rowDiv.appendChild(aisle);
+                    } else {
+                        const seatId = `${r}${pos}`;
+                        const isBooked = bookedSeats.has(seatId);
+                        const isSelected = state.selectedSeats.includes(seatId);
+                        
+                        const seat = document.createElement('div');
+                        seat.id = `seat-${seatId}`;
+                        seat.textContent = pos;
+                        
+                        const baseClasses = 'w-10 h-10 sm:w-12 sm:h-12 flex flex-col items-center justify-center text-sm font-bold rounded-t-xl rounded-b-sm border-2 transition-all select-none shadow-sm relative overflow-hidden';
+                        
+                        if (isBooked) {
+                            seat.className = `${baseClasses} border-slate-300 bg-slate-300 text-slate-500 cursor-not-allowed`;
+                            seat.title = 'Sudah dipesan';
+                            const overlay = document.createElement('div');
+                            overlay.className = 'absolute inset-0 bg-slate-400 opacity-20 transform -rotate-45';
+                            seat.appendChild(overlay);
+                        } else {
+                            if (isSelected) {
+                                seat.className = `${baseClasses} border-blue-600 bg-blue-600 text-white shadow-inner`;
+                            } else {
+                                seat.className = `${baseClasses} border-slate-300 bg-white text-slate-700 hover:border-blue-400 hover:bg-blue-50 cursor-pointer`;
+                            }
+                            seat.onclick = () => toggleSeat(seatId);
+                        }
+                        
+                        rowDiv.appendChild(seat);
+                    }
+                });
+                container.appendChild(rowDiv);
+            }
+        };
+
+        function toggleSeat(seatId) {
+            const index = state.selectedSeats.indexOf(seatId);
+            const warningEl = document.getElementById('seatWarning');
+            
+            if (index > -1) {
+                state.selectedSeats.splice(index, 1);
+                warningEl.classList.add('hidden');
+            } else {
+                if (state.selectedSeats.length >= state.maxSeats) {
+                    warningEl.classList.remove('hidden');
+                    warningEl.classList.add('animate-pulse');
+                    setTimeout(() => warningEl.classList.remove('animate-pulse'), 1000);
+                    return;
+                }
+                state.selectedSeats.push(seatId);
+            }
+            
+            state.selectedSeats.sort((a, b) => {
+                const numA = parseInt(a); const numB = parseInt(b);
+                if (numA === numB) return a.slice(-1).localeCompare(b.slice(-1));
+                return numA - numB;
+            });
+            
+            renderSeatMap();
+            updateSeatSummary();
+        }
+
+        function updateSeatSummary() {
+            const lblSeats = document.getElementById('lblSelectedSeats');
+            const lblTotal = document.getElementById('lblTotalPrice');
+            const btnOpenCheckout = document.getElementById('btnOpenCheckout');
+            
+            if (state.selectedSeats.length > 0) {
+                lblSeats.textContent = state.selectedSeats.join(', ');
+                const total = state.selectedSeats.length * state.selectedBus.price;
+                lblTotal.textContent = formatRupiah(total);
+                btnOpenCheckout.disabled = false;
+            } else {
+                lblSeats.textContent = '-';
+                lblTotal.textContent = 'Rp 0';
+                btnOpenCheckout.disabled = true;
+            }
+        }
+
+        // --- STEP 4: CHECKOUT & DATABASE WRITE ---
+        document.getElementById('btnOpenCheckout').addEventListener('click', () => {
+            document.getElementById('finalRoute').textContent = `${state.search.origin} ➔ ${state.search.dest}`;
+            document.getElementById('finalDate').textContent = formatDate(state.search.date);
+            document.getElementById('finalSeats').textContent = `${state.selectedBus.name} (${state.selectedSeats.join(', ')})`;
+            document.getElementById('finalTotal').textContent = formatRupiah(state.selectedSeats.length * state.selectedBus.price);
+            
+            UI.modals.checkout.classList.add('modal-active');
+            setTimeout(() => document.getElementById('passengerName').focus(), 100);
+        });
+
+        document.getElementById('finalCheckoutForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            
+            const btnConfirm = document.getElementById('btnConfirmPayment');
+            const originalHTML = btnConfirm.innerHTML;
+            const passengerName = document.getElementById('passengerName').value.trim();
+            
+            btnConfirm.innerHTML = '<i class="ph ph-spinner-gap animate-spin text-xl"></i> Menyimpan...';
+            btnConfirm.disabled = true;
+            btnConfirm.classList.replace('bg-emerald-500', 'bg-slate-400');
+
+            setTimeout(() => {
+                try {
+                    const bookingData = {
+                        id: 'BKG-' + Date.now().toString().slice(-6),
+                        passengerName: passengerName,
+                        routeKey: getCurrentRouteKey(),
+                        origin: state.search.origin,
+                        destination: state.search.dest,
+                        date: state.search.date,
+                        busName: state.selectedBus.name,
+                        seats: [...state.selectedSeats],
+                        totalPrice: state.selectedSeats.length * state.selectedBus.price,
+                        timestamp: Date.now()
+                    };
+
+                    saveBooking(bookingData);
+
+                    UI.modals.checkout.classList.remove('modal-active');
+                    UI.modals.success.classList.add('modal-active');
+                    
+                    document.getElementById('finalCheckoutForm').reset();
+
+                } catch (error) {
+                    console.error("Error saving booking:", error);
+                    alert("Terjadi kesalahan saat menyimpan data.");
+                } finally {
+                    btnConfirm.innerHTML = originalHTML;
+                    btnConfirm.disabled = false;
+                    btnConfirm.classList.replace('bg-slate-400', 'bg-emerald-500');
+                }
+            }, 800); // Simulate processing time
+        });
+
+        window.finishBooking = function() {
+            UI.modals.success.classList.remove('modal-active');
+            
+            state.selectedSeats = [];
+            state.selectedBus = null;
+            
+            navigate('passengerList');
+        };
+
+        //        // --- STEP 5: RENDER PASSENGER LIST ---
+        window.renderPassengerList = function() {
+            const tbody = document.getElementById('passengerTableBody');
+            const emptyState = document.getElementById('emptyPassengerState');
+            
+            tbody.innerHTML = '';
+            
+            if (state.globalBookings.length === 0) {
+                tbody.parentNode.parentNode.classList.add('hidden');
+                emptyState.classList.remove('hidden');
+                return;
+            }
+
+            tbody.parentNode.parentNode.classList.remove('hidden');
+            emptyState.classList.add('hidden');
+
+            state.globalBookings.forEach((booking) => {
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-blue-50/50 transition';
+                
+                const shortDate = new Date(booking.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+                
+                tr.innerHTML = `
+                    <td class="p-4 border-b border-slate-100 font-bold text-slate-800">
+                        ${booking.passengerName}
+                    </td>
+                    <td class="p-4 border-b border-slate-100">
+                        <div class="flex items-center gap-1 text-slate-600">
+                            ${booking.origin} <i class="ph ph-arrow-right text-xs"></i> ${booking.destination}
+                        </div>
+                    </td>
+                    <td class="p-4 border-b border-slate-100">
+                        <div class="text-slate-800 font-medium">${booking.busName}</div>
+                        <div class="text-xs text-slate-500">${shortDate}</div>
+                    </td>
+                    <td class="p-4 border-b border-slate-100 text-center">
+                        <div class="flex flex-wrap gap-1 justify-center">
+                            ${booking.seats.map(seat => `<span class="bg-blue-100 text-blue-700 px-2 py-1 rounded text-xs font-bold border border-blue-200">${seat}</span>`).join('')}
+                        </div>
+                    </td>
+                `;
+                
+                tbody.appendChild(tr);
+            });
+        };
+
+        // Initialize App
+        document.addEventListener('DOMContentLoaded', () => {
+            loadBookings();
+            if(UI.loader) {
+                UI.loader.classList.add('hidden');
+            }
+            showView('search');
+        });
+
+    </script>
+</body>
+</html>
